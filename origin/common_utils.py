@@ -109,7 +109,7 @@ def extract_features(filepath):
          [f'mfcc{i+1}_{stat}' for i in range(20) for stat in ['mean', 'var']]
 
     feature_set = pd.DataFrame([features], columns=columns)
-
+         
     return feature_set
 
 
@@ -131,22 +131,3 @@ class EarlyStopper:
                 return True
         return False
 
-class MLP(nn.Module):
-# TODO: Enter your code here
-    def __init__(self, input_size, hidden_size):
-        super(MLP, self).__init__()
-        self.model = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size, 1),
-            nn.Sigmoid()
-        )
-    def forward(self, x):
-        return self.model(x)

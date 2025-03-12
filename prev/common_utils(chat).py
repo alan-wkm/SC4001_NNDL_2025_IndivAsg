@@ -1,8 +1,8 @@
-### THIS FILE CONTAINS COMMON FUNCTIONS, CLASSSES
+# THIS FILE CONTAINS COMMON FUNCTIONS, CLASSES
 
 import tqdm
 import time
-import random 
+import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -22,21 +22,22 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, precision_score, recall_score, confusion_matrix
 
 
-
 def split_dataset(df, columns_to_drop, test_size, random_state):
     label_encoder = preprocessing.LabelEncoder()
 
     df['label'] = label_encoder.fit_transform(df['label'])
 
-    df_train, df_test = train_test_split(df, test_size=test_size, random_state=random_state)
+    df_train, df_test = train_test_split(
+        df, test_size=test_size, random_state=random_state)
 
-    df_train2 = df_train.drop(columns_to_drop,axis=1)
+    df_train2 = df_train.drop(columns_to_drop, axis=1)
     y_train2 = df_train['label'].to_numpy()
 
-    df_test2 = df_test.drop(columns_to_drop,axis=1)
-    y_test2 = df_test['label'].to_numpy() 
+    df_test2 = df_test.drop(columns_to_drop, axis=1)
+    y_test2 = df_test['label'].to_numpy()
 
     return df_train2, y_train2, df_test2, y_test2
+
 
 def preprocess_dataset(df_train, df_test):
 
@@ -47,7 +48,8 @@ def preprocess_dataset(df_train, df_test):
 
     return df_train_scaled, df_test_scaled
 
-def set_seed(seed = 0):
+
+def set_seed(seed=0):
     '''
     set random seed
     '''
@@ -57,8 +59,8 @@ def set_seed(seed = 0):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
+
 def extract_features(filepath):
-    
     '''
     This function reads the content in a directory and for each audio file detected
     reads the file and extracts relevant features using librosa library for audio
@@ -72,7 +74,8 @@ def extract_features(filepath):
     spec_bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
     zcr = librosa.feature.zero_crossing_rate(y)
-    harmony, perceptr = librosa.effects.harmonic(y), librosa.effects.percussive(y)
+    harmony, perceptr = librosa.effects.harmonic(
+        y), librosa.effects.percussive(y)
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
 
@@ -80,33 +83,33 @@ def extract_features(filepath):
     frames_to_time = librosa.frames_to_time(onset_frames[:20], sr=sr)
 
     features = [
-                f"{filepath}",
-                np.mean(chroma_stft), np.var(chroma_stft),
-                np.mean(rms), np.var(rms),
-                np.mean(spec_cent), np.var(spec_cent),
-                np.mean(spec_bw), np.var(spec_bw),
-                np.mean(rolloff), np.var(rolloff),
-                np.mean(zcr), np.var(zcr),
-                np.mean(harmony), np.var(harmony),
-                np.mean(perceptr), np.var(perceptr),
-                float(tempo)
-            ]
+        f"{filepath}",
+        np.mean(chroma_stft), np.var(chroma_stft),
+        np.mean(rms), np.var(rms),
+        np.mean(spec_cent), np.var(spec_cent),
+        np.mean(spec_bw), np.var(spec_bw),
+        np.mean(rolloff), np.var(rolloff),
+        np.mean(zcr), np.var(zcr),
+        np.mean(harmony), np.var(harmony),
+        np.mean(perceptr), np.var(perceptr),
+        float(tempo)
+    ]
 
     for coeff in mfcc:
         features.append(np.mean(coeff))
         features.append(np.var(coeff))
 
-    columns=['filename',
-         'chroma_stft_mean', 'chroma_stft_var',
-         'rms_mean', 'rms_var',
-         'spectral_centroid_mean', 'spectral_centroid_var',
-         'spectral_bandwidth_mean', 'spectral_bandwidth_var',
-         'rolloff_mean', 'rolloff_var',
-         'zero_crossing_rate_mean','zero_crossing_rate_var',
-         'harmony_mean', 'harmony_var',
-         'perceptr_mean', 'perceptr_var',
-         'tempo'] + \
-         [f'mfcc{i+1}_{stat}' for i in range(20) for stat in ['mean', 'var']]
+    columns = ['filename',
+               'chroma_stft_mean', 'chroma_stft_var',
+               'rms_mean', 'rms_var',
+               'spectral_centroid_mean', 'spectral_centroid_var',
+               'spectral_bandwidth_mean', 'spectral_bandwidth_var',
+               'rolloff_mean', 'rolloff_var',
+               'zero_crossing_rate_mean', 'zero_crossing_rate_var',
+               'harmony_mean', 'harmony_var',
+               'perceptr_mean', 'perceptr_var',
+               'tempo'] + \
+        [f'mfcc{i+1}_{stat}' for i in range(20) for stat in ['mean', 'var']]
 
     feature_set = pd.DataFrame([features], columns=columns)
 
@@ -133,20 +136,23 @@ class EarlyStopper:
 
 class MLP(nn.Module):
 # TODO: Enter your code here
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_dim):
         super(MLP, self).__init__()
+        self.flatten = nn.Flatten()
         self.model = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
+            nn.Linear(input_dim, 128),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size, hidden_size),
+            nn.Linear(128, 128),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size, hidden_size),
+            nn.Linear(128, 128),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size, 1),
+            nn.Linear(128, 1),
             nn.Sigmoid()
         )
     def forward(self, x):
-        return self.model(x)
+        x = self.flatten(x)
+        logits = self.model(x)
+        return logits
